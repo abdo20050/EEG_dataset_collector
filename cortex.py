@@ -50,8 +50,10 @@ PROFILE_LOADED = 13
 PROFILE_UNLOADED = 14
 CORTEX_AUTO_UNLOAD_PROFILE = 15
 EULA_ACCEPTED = 17
+SESSION_DATA_SAVED = 18
 DISKSPACE_LOW = 19
 DISKSPACE_CRITICAL = 20
+POST_PROCESSING_DONE = 30
 HEADSET_CANNOT_CONNECT_TIMEOUT = 102
 HEADSET_DISCONNECTED_TIMEOUT = 103
 HEADSET_CONNECTED = 104
@@ -66,7 +68,7 @@ class Cortex(Dispatcher):
                 'mc_training_threshold_done', 'create_record_done', 'stop_record_done','warn_cortex_stop_all_sub', 
                 'inject_marker_done', 'update_marker_done', 'export_record_done', 'new_data_labels', 
                 'new_com_data', 'new_fe_data', 'new_eeg_data', 'new_mot_data', 'new_dev_data', 
-                'new_met_data', 'new_pow_data', 'new_sys_data']
+                'new_met_data', 'new_pow_data', 'new_sys_data','post_process_done','session_data_saved']
     def __init__(self, client_id, client_secret, debug_mode=False, **kwargs):
         
         self.session_id = ''
@@ -107,7 +109,7 @@ class Cortex(Dispatcher):
         
         # As default, a Emotiv self-signed certificate is required.
         # If you don't want to use the certificate, please replace by the below line  by sslopt={"cert_reqs": ssl.CERT_NONE}
-        sslopt = {'ca_certs': "../certificates/rootCA.pem", "cert_reqs": ssl.CERT_REQUIRED}
+        sslopt = {'ca_certs': "./certificates/rootCA.pem", "cert_reqs": ssl.CERT_REQUIRED}
 
         self.websock_thread  = threading.Thread(target=self.ws.run_forever, args=(None, sslopt), name=threadName)
         self.websock_thread .start()
@@ -323,6 +325,12 @@ class Cortex(Dispatcher):
         if warning_code == ACCESS_RIGHT_GRANTED:
             # call authorize again
             self.authorize()
+        elif warning_code == SESSION_DATA_SAVED:
+            print('session Saved!')
+            self.emit('session_data_saved')
+        elif warning_code == POST_PROCESSING_DONE:
+            print('post process finished! ' + warning_msg['recordId'])
+            self.emit('post_process_done', data = warning_msg['recordId'])
         elif warning_code == HEADSET_CONNECTED:
             # query headset again then create session
             self.query_headset()

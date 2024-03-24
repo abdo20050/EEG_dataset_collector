@@ -1,6 +1,8 @@
 from cortex import Cortex
 import time
+import _thread
 import threading
+import visualize_second
 from visualize_second import display_image, generate_labels
 import atexit
 class Record():
@@ -12,7 +14,13 @@ class Record():
         self.c.bind(warn_cortex_stop_all_sub=self.on_warn_cortex_stop_all_sub)
         self.c.bind(export_record_done=self.on_export_record_done)
         self.c.bind(inform_error=self.on_inform_error)
-
+        self.c.bind(session_data_saved=self.on_post_session_data_saved)
+        images_path = "./images/"
+        image_duration = 5000  # Display each image for 5000 milliseconds (5 seconds)
+        break_duration = 2000
+        label_generator = generate_labels(250)
+        visualize_second.recorder = self
+        self.visThread = threading.Thread(target=display_image, args= (images_path, label_generator, image_duration, break_duration, self))
     def start(self, record_duration_s=20, headsetId=''):
         """
         To start data recording and exporting process as below
@@ -58,7 +66,13 @@ class Record():
 
     def stop_record(self):
         self.c.stop_record()
+       
 
+    def on_post_session_data_saved(self, *args, **kwargs):
+        self.export_record(self.record_export_folder, self.record_export_data_types,
+                           self.record_export_format, [self.record_id], self.record_export_version)
+        print("export hereeeeee!")
+        pass
 
     def export_record(self, folder, stream_types, format, record_ids,
                       version, **kwargs):
@@ -85,14 +99,8 @@ class Record():
     # callbacks functions
     def on_create_session_done(self, *args, **kwargs):
         print('on_create_session_done')
-        images_path = "./images/"
-        image_duration = 5000  # Display each image for 5000 milliseconds (5 seconds)
-        break_duration = 2000
-        label_generator = generate_labels(250)
-        th = threading.Thread(display_image(images_path, label_generator, image_duration, break_duration, self))
-        th.start()
-    
-        th.join()
+        self.visThread.start()
+      
         # create a record
         # self.create_record(self.record_title, description=self.record_description)
 
@@ -121,14 +129,13 @@ class Record():
 
         # disconnect headset to export record
         print('on_stop_record_done: Disconnect the headset to export record')
-        self.c.disconnect_headset()
-        self.export_record(self.record_export_folder, self.record_export_data_types,
-                           self.record_export_format, [self.record_id], self.record_export_version)
-
+        # self.c.disconnect_headset()
+        # time.sleep(1)
+        
     def on_warn_cortex_stop_all_sub(self, *args, **kwargs):
         print('on_warn_cortex_stop_all_sub')
         # cortex has closed session. Wait some seconds before exporting record
-        time.sleep(3)
+        # time.sleep(3)
 
         #export record
         # self.export_record(self.record_export_folder, self.record_export_data_types,
@@ -138,11 +145,17 @@ class Record():
         print('on_export_record_done: the successful record exporting as below:')
         data = kwargs.get('data')
         print(data)
-        self.c.close()
+        # self.c.close()
 
     def on_inform_error(self, *args, **kwargs):
         error_data = kwargs.get('error_data')
         print(error_data)
+
+    def exit_fun(self):
+
+        self.c.disconnect_headset()
+        # self.visThread.join()
+        self.c.close()
 
 # -----------------------------------------------------------
 # 
@@ -175,7 +188,7 @@ def main():
     r.record_description = '' # optional param
 
     # input params for export_record. Please see on_warn_cortex_stop_all_sub()
-    r.record_export_folder = "D:/emotive/cortex-example/python/records" # your place to export, you should have write permission, example on desktop
+    r.record_export_folder = "./records" # your place to export, you should have write permission, example on desktop
     r.record_export_data_types = ['EEG']
     r.record_export_format = 'CSV'
     r.record_export_version = 'V2'

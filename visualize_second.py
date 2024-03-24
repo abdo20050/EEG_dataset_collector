@@ -1,15 +1,23 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from label_generate import generate_labels
+import atexit
 # from record_dataset import Record
 # import threading
+recorder = None
 labels = ['break','forward','backward', 'left', 'right']  # Labels for the markers
-def display_image(images_path, label_generator , image_duration = 5000, break_duration = 2000, recorder = None):
+def display_image(images_path, label_generator , image_duration = 5000, break_duration = 2000, recorder = recorder):
     #non local variables
     break_time = True
     curLabel = "break"
     nextLabel = label_generator()
     root = tk.Tk()
+    def on_closing():
+        root.destroy()
+        if recorder != None:
+            print('bye')
+            recorder.exit_fun()
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     remaining_time_label = tk.Label(root, text="Remaining Time: {} ms".format(break_duration/1000))
     remaining_time_label.pack(side="top", pady=10)
     motion_label_label = tk.Label(root, text="Current label is: {}".format(curLabel))
@@ -24,6 +32,7 @@ def display_image(images_path, label_generator , image_duration = 5000, break_du
     panel.pack(side="bottom", fill="both", expand="yes")
     interval = 100
     root.title("Image Display")
+            # recorder.visThread.join()
     def show_next_image(image ,remaining_time):
         nonlocal break_time
         nonlocal curLabel
@@ -71,12 +80,16 @@ def display_image(images_path, label_generator , image_duration = 5000, break_du
             if break_time:
                 if recorder != None:
                     recorder.stop_record()
+                    # recorder.export_record(recorder.record_export_folder, recorder.record_export_data_types,
+                        #    recorder.record_export_format, [recorder.record_id], recorder.record_export_version)
+
                 curLabel = "break"
                 nextLabel = label_generator()
             else :
-                if recorder != None:
-                    recorder.create_record(recorder.record_title)
                 curLabel = nextLabel
+                if recorder != None:
+                    recorder.record_export_folder = "D:/grad_proj/dataset_collect_script/records/"+curLabel
+                    recorder.create_record(recorder.record_title)
             
         
             # print(curLabel)
@@ -87,6 +100,7 @@ def display_image(images_path, label_generator , image_duration = 5000, break_du
     # root.protocol("WM_DELETE_WINDOW", on_closing(markerObj))
 
     root.mainloop()
+
 
 # Example usage:
 if __name__ == "__main__":
