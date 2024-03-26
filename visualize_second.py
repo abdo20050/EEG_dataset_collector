@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from label_generate import generate_labels
+import time
 import atexit
 # from record_dataset import Record
 # import threading
@@ -31,6 +32,7 @@ def display_image(images_path, label_generator , image_duration = 5000, break_du
     panel = tk.Label(root, image=photo)
     panel.pack(side="bottom", fill="both", expand="yes")
     interval = 100
+    prev_time = time.time()
     root.title("Image Display")
             # recorder.visThread.join()
     def show_next_image(image ,remaining_time):
@@ -38,11 +40,13 @@ def display_image(images_path, label_generator , image_duration = 5000, break_du
         nonlocal curLabel
         nonlocal nextLabel
         nonlocal interval
+        nonlocal prev_time
         remaining_time_label.config(text="Remaining Time: {} ms".format(round(remaining_time/1000,1)))
         motion_label_label.config(text="Current label is: {}".format(curLabel))
         curImg = image
         
         if remaining_time > 0:
+            
             if 1:
                 duration = break_duration if break_time else image_duration
                 transition_interval = 500
@@ -69,12 +73,17 @@ def display_image(images_path, label_generator , image_duration = 5000, break_du
                     new_img = Image.alpha_composite(bgImg,fgImg)
                 else: 
                     new_img = Images[nextLabel]
+                # new_img = Images[nextLabel]
                 # print(nextLabel)
                 photo = ImageTk.PhotoImage(new_img)
                 panel.configure(image=photo)
                 panel.image = photo
-                
-            root.after(interval, lambda: show_next_image(curImg, remaining_time - interval))
+            root.update()
+            real_interval = round((time.time()-prev_time)*1000 , 3)
+            prev_time = time.time()
+            print(real_interval)
+            remaining_time = max(remaining_time - real_interval,0)
+            root.after(interval, lambda: show_next_image(curImg, remaining_time))
         else:
             break_time = not break_time
             if break_time:
@@ -111,7 +120,7 @@ if __name__ == "__main__":
 
     # atexit.register(exit_handler(m))
     images_path = "./images/"
-    image_duration = 5000  # Display each image for 5000 milliseconds (5 seconds)
-    break_duration = 2000
+    image_duration = 4000  # Display each image for 5000 milliseconds (5 seconds)
+    break_duration = 4000
     label_generator = generate_labels(250)
     display_image(images_path, label_generator ,image_duration = image_duration, break_duration = break_duration)
