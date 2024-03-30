@@ -2,9 +2,9 @@ from cortex import Cortex
 import time
 import _thread
 import threading
-import visualize_second
-from visualize_second import display_image, generate_labels
-import atexit
+import visualize_second 
+from visualize_second import display_image, generate_labels, read_png_names
+import os
 class Record():
     def __init__(self, app_client_id, app_client_secret, **kwargs):
         self.c = Cortex(app_client_id, app_client_secret, debug_mode=True, **kwargs)
@@ -15,13 +15,16 @@ class Record():
         self.c.bind(export_record_done=self.on_export_record_done)
         self.c.bind(inform_error=self.on_inform_error)
         self.c.bind(session_data_saved=self.on_post_session_data_saved)
-        images_path = "./images/"
-        image_duration = 5000  # Display each image for 5000 milliseconds (5 seconds)
-        break_duration = 2000
-        label_generator = generate_labels(250)
-        visualize_second.recorder = self
-        self.visThread = threading.Thread(target=display_image, args= (images_path, label_generator, image_duration, break_duration, self))
-    def start(self, record_duration_s=20, headsetId=''):
+        self.img_dir = "./_images/"
+        self.image_duration = 4000  # Display each image for 5000 milliseconds (5 seconds)
+        self.labels = []
+        self.record_dic = {}
+        self.exportedSum = 0
+        self.isDoneExport = True
+        # label_generator = generate_labels(250,self.labels)
+        # visualize_second.recorder = self
+        # self.visThread = threading.Thread(target=display_image, args= (self.img_dir, self.label_generator, self.image_duration, self.break_duration, self))
+    def start(self, headsetId=''):
         """
         To start data recording and exporting process as below
         (1) check access right -> authorize -> connect headset->create session
@@ -38,8 +41,10 @@ class Record():
         -------
         None
         """
-        self.record_duration_s = record_duration_s
-
+        # print(self.labels)
+        self.record_dic = {i:0 for i in self.labels}
+        visualize_second.recorder = self
+        self.visThread = threading.Thread(target=visualize_second.main, args= (self.img_dir ,self.image_duration, self))
         if headsetId != '':
             self.c.set_wanted_headset(headsetId)
 
@@ -62,6 +67,7 @@ class Record():
         -------
         None
         """
+        self.isDoneExport = False
         self.c.create_record(record_title, **kwargs)
 
     def stop_record(self):
@@ -99,6 +105,7 @@ class Record():
     # callbacks functions
     def on_create_session_done(self, *args, **kwargs):
         print('on_create_session_done')
+        # self.c.optOut_request(True)
         self.visThread.start()
       
         # create a record
@@ -145,6 +152,8 @@ class Record():
         print('on_export_record_done: the successful record exporting as below:')
         data = kwargs.get('data')
         print(data)
+        self.isDoneExport = True
+        self.exportedSum += 1
         # self.c.close()
 
     def on_inform_error(self, *args, **kwargs):
@@ -153,7 +162,7 @@ class Record():
 
     def exit_fun(self):
 
-        self.c.disconnect_headset()
+        # self.c.disconnect_headset()
         # self.visThread.join()
         self.c.close()
 
@@ -173,9 +182,24 @@ class Record():
 # 
 # -----------------------------------------------------------
 
+def setup_output_folder(outDir, labels):
+    # Define the labels
+    # labels = ['label1', 'label2', 'label3']
 
-def main():
-    
+    # Create the 'datasets' directory if it does not exist
+    if not os.path.exists(outDir):
+        os.makedirs(outDir)
+
+    # Create a subdirectory for each label
+    try:
+        for label in labels:
+            os.makedirs(os.path.join(outDir, label))
+    except OSError as err:
+        print(err)
+
+def main(title='', user='', imgDir = './_images/',outputDir = './records/'):
+    labels = read_png_names(imgDir)
+    setup_output_folder(outputDir, labels)
     # Please fill your application clientId and clientSecret before running script
     your_app_client_id = 'kj6eUut1fYhMj3Nbg7kuHrJjFhBe7MiNw0PZBFxi'
     your_app_client_secret = 'DbAH81xKycnLXrQLY4HWkcz29OMXn5gQ86snyJsFdro1ulGTT2FZfZWrFYXNWZKHWLgzXYNkUr6JBo0lgZlVeeQkBKV4vmee1SC6BDDWEW9jve06FrimlT0aeYlIWnlz'
@@ -184,18 +208,19 @@ def main():
 
 
     # input params for create_record. Please see on_create_session_done before running script
-    r.record_title = 'test_record' # required param and can not be empty
+    r.record_title = 'xx_'+('test_record' if title == '' else title)+'_'+user# required param and can not be empty
     r.record_description = '' # optional param
-
+    labels_for_recorder = [i for i in labels]
+    # labels_for_recorder.remove('break')
+    r.labels = labels_for_recorder
+    r.img_dir = imgDir
     # input params for export_record. Please see on_warn_cortex_stop_all_sub()
     r.record_export_folder = "./records" # your place to export, you should have write permission, example on desktop
     r.record_export_data_types = ['EEG']
     r.record_export_format = 'CSV'
     r.record_export_version = 'V2'
 
-
-    record_duration_s = 10 # duration for recording in this example. It is not input param of create_record
-    r.start(record_duration_s)
+    r.start()
     
 if __name__ =='__main__':
     main()

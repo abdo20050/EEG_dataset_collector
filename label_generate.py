@@ -1,8 +1,8 @@
 import random
 
-def generate_labels(max_occurrences = 100):
+def generate_labels(max_occurrences = 100, labels = [1, 2, 3, 4]):
     # Define your list of labels and their respective maximum occurrences
-    labels = ['right', 'left', 'forward', 'backward']
+    # labels = ['right', 'left', 'forward', 'backward']
     
 
     # Initialize variables

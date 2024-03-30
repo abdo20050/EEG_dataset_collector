@@ -580,6 +580,22 @@ class Cortex(Dispatcher):
             print('subscribe request \n', json.dumps(sub_request_json, indent=4))
 
         self.ws.send(json.dumps(sub_request_json))
+    def optOut_request(self, val):
+        print('subscribe request --------------------------------')
+        optOut_request_json = {
+            "id": SETUP_PROFILE_ID,
+            "jsonrpc": "2.0",
+            "method": "configOptOut",
+            "params": {
+                "cortexToken": self.auth,
+                "status": "set",
+                "newOptOut": val
+            }
+        }
+        if self.debug:
+            print('optOut conf request \n', json.dumps(optOut_request_json, indent=4))
+
+        self.ws.send(json.dumps(optOut_request_json))
 
     def unsub_request(self, stream):
         print('unsubscribe request --------------------------------')
