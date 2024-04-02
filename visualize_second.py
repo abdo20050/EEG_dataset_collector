@@ -35,17 +35,38 @@ def display_image(images_path, label_generator , image_duration = 4000, break_du
             # print('bye')
             recorder.exit_fun()
     root.protocol("WM_DELETE_WINDOW", on_closing)
-    remaining_time_label = tk.Label(root, text="Remaining Time: {} ms".format(break_duration/1000))
+    remaining_time_label = tk.Label(root, text="Remaining Time: 0.0 ms")
     remaining_time_label.pack(side="top", pady=10)
     motion_label_label = tk.Label(root, text="Current label is: {}".format(curLabel))
     motion_label_label.pack(side="top", pady=10)
     Images = { i : Image.open(images_path+(i+".png")).convert("RGBA") for i in labels}
     print(Images)
-    breakImg = Images[nextLabel]
+    breakImg = Images['break']
     white_layer = Image.new('RGBA', breakImg.size,color=(255,255,255,255))
     transparent_layer = Image.new('RGBA', breakImg.size,color=(255,255,255,0))
     photo = ImageTk.PhotoImage(breakImg)
     panel = tk.Label(root, image=photo)
+    is_playing = False
+    def toggle_playback():
+        nonlocal is_playing
+        nonlocal prev_time
+        is_playing = not is_playing
+        play_pause_button.config(text="pause" if is_playing else "play")
+        photo = ImageTk.PhotoImage(Images['break'])
+        panel.configure(image=photo)
+        panel.image = photo
+        remaining_time_label.config(text="Remaining Time: 0.0 ms")
+        prev_time = time.time()
+
+        # root.update()
+        # Optionally reset remaining time if paused
+
+        # Call show_next_image only if playback is resumed
+        if is_playing:
+            show_next_image(white_layer ,break_duration)
+
+    play_pause_button = tk.Button(root, text="Play" if not is_playing else "Pause", command=toggle_playback)
+    play_pause_button.pack(side="top")
     panel.pack(side="bottom", fill="both", expand="yes")
     interval = 100
     prev_time = time.time()
@@ -57,6 +78,15 @@ def display_image(images_path, label_generator , image_duration = 4000, break_du
         nonlocal nextLabel
         nonlocal interval
         nonlocal prev_time
+        nonlocal is_playing
+        if not is_playing:
+            curLabel = 'break'
+            break_time = True
+            if recorder != None:
+                recorder.stop_record()
+                recorder.enableExport = False
+            root.update()
+            return
         if not break_time :
             remaining_time_label.config(text="Remaining Time: {} ms".format(round(remaining_time/1000,1)))
         else: 
@@ -84,7 +114,7 @@ def display_image(images_path, label_generator , image_duration = 4000, break_du
                         bgImg = Image.blend(bgImg,transparent_layer,alpha= 1 - betweenAlphaFactor)
                         fgImg = Image.blend(Images["break"],transparent_layer,alpha=0.5)
                         new_img = Image.alpha_composite(bgImg,fgImg)
-                    elif endAlphaFactor <= 1 and recorder != None and recorder.isDoneExport == False:#wait till export is done
+                    elif endAlphaFactor <= 1 and recorder != None and recorder.isDoneExport == False and recorder.enableExport == True:#wait till export is done
                         remaining_time += 200
                         curImg = Images[nextLabel]
                         bgImg = curImg.copy()
@@ -116,6 +146,7 @@ def display_image(images_path, label_generator , image_duration = 4000, break_du
             if break_time:
                 if recorder != None:
                     recorder.stop_record()
+                    recorder.enableExport = True
                     pass
                     # recorder.export_record(recorder.record_export_folder, recorder.record_export_data_types,
                         #    recorder.record_export_format, [recorder.record_id], recorder.record_export_version)
@@ -135,9 +166,10 @@ def display_image(images_path, label_generator , image_duration = 4000, break_du
             # print(duration)
             interval = 10 if break_time else 100
             root.after(interval, lambda: show_next_image(curImg, duration))  # Reset timer for next image
-    root.after(interval, show_next_image(breakImg ,break_duration))  # Start the image display loop
+    # show_next_image(breakImg ,break_duration)
+    # root.after(interval, show_next_image(breakImg ,break_duration))  # Start the image display loop
     # root.protocol("WM_DELETE_WINDOW", on_closing(markerObj))
-
+    root.geometry('%dx%d+%d+%d' % (400, 500, 500, 150))
     root.mainloop()
 def main(img_path, duration,recorder = None):
     images_path = img_path

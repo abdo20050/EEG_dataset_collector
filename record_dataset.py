@@ -21,6 +21,7 @@ class Record():
         self.record_dic = {}
         self.exportedSum = 0
         self.isDoneExport = True
+        self.enableExport = True
         # label_generator = generate_labels(250,self.labels)
         # visualize_second.recorder = self
         # self.visThread = threading.Thread(target=display_image, args= (self.img_dir, self.label_generator, self.image_duration, self.break_duration, self))
@@ -75,9 +76,13 @@ class Record():
        
 
     def on_post_session_data_saved(self, *args, **kwargs):
-        self.export_record(self.record_export_folder, self.record_export_data_types,
-                           self.record_export_format, [self.record_id], self.record_export_version)
-        print("export hereeeeee!")
+        if self.enableExport:
+            self.export_record(self.record_export_folder, self.record_export_data_types,
+                            self.record_export_format, [self.record_id], self.record_export_version)
+            print("export hereeeeee!")
+        else:
+            
+            print('not exported!')
         pass
 
     def export_record(self, folder, stream_types, format, record_ids,
